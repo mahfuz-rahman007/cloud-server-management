@@ -64,10 +64,16 @@ class ServerRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'ip_address.ip' => 'The IP address must be a valid IPv4 address.',
+            'ip_address.ip' => 'Please enter a valid IPv4 address (e.g., 192.168.1.100 or 10.0.0.1).',
+            'ip_address.unique' => 'This IP address is already assigned to another server.',
             'cpu_cores.between' => 'CPU cores must be between 1 and 128.',
-            'ram_mb.between' => 'RAM must be between 512MB and 1,048,576MB.',
-            'storage_gb.between' => 'Storage must be between 10GB and 1,048,576GB.',
+            'ram_mb.between' => 'RAM must be between 512MB and 1,048,576MB (1TB).',
+            'storage_gb.between' => 'Storage must be between 10GB and 1,048,576GB (1TB).',
+            'name.required' => 'Server name is required.',
+            'provider.required' => 'Please select a cloud provider.',
+            'provider.in' => 'Please select a valid provider (AWS, DigitalOcean, Vultr, or Other).',
+            'status.required' => 'Please select a server status.',
+            'status.in' => 'Please select a valid status (Active, Inactive, or Maintenance).',
         ];
     }
 }

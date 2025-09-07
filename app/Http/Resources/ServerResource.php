@@ -23,8 +23,8 @@ class ServerResource extends JsonResource
             'cpu_cores' => $this->cpu_cores,
             'ram_mb' => $this->ram_mb,
             'storage_gb' => $this->storage_gb,
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
     }
 }

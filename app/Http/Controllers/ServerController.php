@@ -97,7 +97,7 @@ class ServerController extends Controller
         }
 
         return Inertia::render('Servers/Show', [
-            'server' => new ServerResource($server),
+            'server' => (new ServerResource($server))->resolve(),
         ]);
     }
 
@@ -107,7 +107,7 @@ class ServerController extends Controller
     public function edit(Server $server)
     {
         return Inertia::render('Servers/Edit', [
-            'server' => new ServerResource($server),
+            'server' => (new ServerResource($server))->resolve(),
         ]);
     }
 
