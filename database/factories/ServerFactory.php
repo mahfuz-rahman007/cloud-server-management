@@ -19,10 +19,12 @@ class ServerFactory extends Factory
         $providers = ['aws', 'digitalocean', 'vultr', 'other'];
         $statuses = ['active', 'inactive', 'maintenance'];
         
+        $provider = fake()->randomElement($providers);
+        
         return [
-            'name' => fake()->slug(2) . '-' . fake()->randomElement(['web', 'db', 'cache', 'api', 'worker']),
+            'name' => fake()->unique()->userName() . '-' . fake()->randomElement(['web', 'db', 'cache', 'api', 'worker']) . '-' . fake()->numberBetween(1, 9999),
             'ip_address' => fake()->unique()->ipv4(),
-            'provider' => fake()->randomElement($providers),
+            'provider' => $provider,
             'status' => fake()->randomElement($statuses),
             'cpu_cores' => fake()->numberBetween(1, 128),
             'ram_mb' => fake()->randomElement([512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]),

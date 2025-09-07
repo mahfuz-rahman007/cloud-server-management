@@ -15,51 +15,50 @@ class ServerController extends Controller
      */
     public function index(Request $request)
     {
+        $request->validate([
+            'status' => ['sometimes', 'string', 'in:active,inactive,maintenance'],
+            'provider' => ['sometimes', 'string', 'in:aws,digitalocean,vultr,other'],
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'sort' => ['sometimes', 'string', 'in:id,name,ip_address,provider,status,cpu_cores,ram_mb,storage_gb,created_at,updated_at'],
+            'direction' => ['sometimes', 'string', 'in:asc,desc'],
+            'per_page' => ['sometimes', 'integer', 'in:10,25,50,100'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
         $query = Server::query();
 
-        // Apply filters
-        if ($request->filled('status')) {
-            $query->byStatus($request->status);
-        }
+        $query->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+              ->when($request->filled('provider'), fn($q) => $q->where('provider', $request->provider))
+              ->when($request->filled('search'), function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('ip_address', 'like', '%' . $request->search . '%');
+              });
 
-        if ($request->filled('provider')) {
-            $query->byProvider($request->provider);
-        }
-
-        if ($request->filled('search')) {
-            $query->search($request->search);
-        }
-
-        // Apply sorting
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
+        $query->orderBy($sortField, $sortDirection);
 
-        $allowedSorts = ['id', 'name', 'ip_address', 'provider', 'status', 'cpu_cores', 'ram_mb', 'storage_gb', 'created_at', 'updated_at'];
-
-        if (in_array($sortField, $allowedSorts)) {
-            $query->orderBy($sortField, $sortDirection);
-        }
-
-        // Apply pagination
         $perPage = $request->get('per_page', 25);
-        $perPage = in_array($perPage, [10, 25, 50, 100]) ? $perPage : 25;
-
         $servers = $query->paginate($perPage)->appends($request->query());
 
+        // Return JSON response for API requests
         if ($request->wantsJson()) {
             return ServerResource::collection($servers);
         }
 
+        $serversToArray = $servers->toArray();
+
+        // Return Inertia response for web requests
         return Inertia::render('Servers/Index', [
             'servers' => [
-                'data' => ServerResource::collection($servers)->resolve(),
+                'data' => $serversToArray['data'],
             ],
             'filters' => $request->only(['status', 'provider', 'search', 'sort', 'direction', 'per_page']),
             'pagination' => [
-                'current_page' => $servers->currentPage(),
-                'last_page' => $servers->lastPage(),
-                'per_page' => $servers->perPage(),
-                'total' => $servers->total(),
+                'current_page' => $serversToArray['current_page'],
+                'last_page' => $serversToArray['last_page'],
+                'per_page' => $serversToArray['per_page'],
+                'total' => $serversToArray['total'],
             ],
         ]);
     }

@@ -30,22 +30,4 @@ class Server extends Model
         ];
     }
 
-    // Scopes for filtering
-    public function scopeByStatus(Builder $query, string $status): Builder
-    {
-        return $query->where('status', $status);
-    }
-
-    public function scopeByProvider(Builder $query, string $provider): Builder
-    {
-        return $query->where('provider', $provider);
-    }
-
-    public function scopeSearch(Builder $query, string $term): Builder
-    {
-        return $query->where(function (Builder $q) use ($term) {
-            $q->where('name', 'like', "%{$term}%")
-              ->orWhere('ip_address', 'like', "%{$term}%");
-        });
-    }
 }

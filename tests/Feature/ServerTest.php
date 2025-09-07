@@ -35,6 +35,62 @@ it('can list servers with pagination', function () {
         );
 });
 
+it('validates index request parameters', function () {
+    $this->actingAs($this->user);
+
+    // Test invalid status
+    $response = $this->get('/servers?status=invalid');
+    $response->assertSessionHasErrors(['status']);
+
+    // Test invalid provider
+    $response = $this->get('/servers?provider=invalid');
+    $response->assertSessionHasErrors(['provider']);
+
+    // Test invalid sort field
+    $response = $this->get('/servers?sort=invalid_field');
+    $response->assertSessionHasErrors(['sort']);
+
+    // Test invalid direction
+    $response = $this->get('/servers?direction=invalid');
+    $response->assertSessionHasErrors(['direction']);
+
+    // Test invalid per_page
+    $response = $this->get('/servers?per_page=500');
+    $response->assertSessionHasErrors(['per_page']);
+
+    // Test invalid page (negative)
+    $response = $this->get('/servers?page=-1');
+    $response->assertSessionHasErrors(['page']);
+});
+
+it('accepts valid index request parameters', function () {
+    $this->actingAs($this->user);
+
+    $response = $this->get('/servers?status=active&provider=aws&search=web&sort=name&direction=asc&per_page=50&page=1');
+    
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Servers/Index')
+        ->has('servers.data')
+        ->has('filters')
+        ->has('pagination')
+    );
+});
+
+it('handles empty search gracefully', function () {
+    $this->actingAs($this->user);
+
+    $response = $this->get('/servers?search=');
+    $response->assertSuccessful();
+});
+
+it('handles special characters in search', function () {
+    $this->actingAs($this->user);
+
+    $response = $this->get('/servers?search=' . urlencode('web-server@test.com'));
+    $response->assertSuccessful();
+});
+
 it('can create server with valid data', function () {
     $this->actingAs($this->user);
 
