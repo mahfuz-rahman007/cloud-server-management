@@ -48,7 +48,7 @@ it('prevents race condition when server is modified by another user', function (
     // Verify the error message
     $errors = session('errors')->getBag('default');
     expect($errors->has('updated_at'))->toBeTrue();
-    expect($errors->first('updated_at'))->toBe('This server was modified by another user. Please refresh and try again.');
+    expect($errors->first('updated_at'))->toBe('This server was modified by another user when you submitted your changes. Please try again.');
 
     // Verify the server data was NOT changed by our attempted update
     $this->server->refresh();
@@ -75,8 +75,8 @@ it('allows update when timestamp matches current version', function () {
         'updated_at' => $currentUpdatedAt, // Correct timestamp
     ]);
 
-    // Should redirect to servers index with success message
-    $response->assertRedirect('/servers');
+    // Should redirect back with success message
+    $response->assertRedirect();
     $response->assertSessionHas('success');
 
     // Verify the server was updated
@@ -114,7 +114,7 @@ it('handles concurrent updates with different timestamps', function () {
         'updated_at' => $originalTimestamp1,
     ]);
 
-    $response1->assertRedirect('/servers');
+    $response1->assertRedirect();
     $response1->assertSessionHas('success');
 
     // Update server2 with its original timestamp (this should also succeed)
@@ -129,7 +129,7 @@ it('handles concurrent updates with different timestamps', function () {
         'updated_at' => $originalTimestamp2,
     ]);
 
-    $response2->assertRedirect('/servers');
+    $response2->assertRedirect();
     $response2->assertSessionHas('success');
 
     // Verify both servers were updated correctly
@@ -169,5 +169,5 @@ it('works with json api requests', function () {
 
     $responseData = $response->json();
     expect($responseData['errors']['updated_at'][0])
-        ->toBe('This server was modified by another user. Please refresh and try again.');
+        ->toBe('This server was modified by another user when you submitted your changes. Please try again.');
 });

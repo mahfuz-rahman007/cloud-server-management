@@ -53,4 +53,25 @@ class ServerFactory extends Factory
             'updated_at' => $updatedAt,
         ];
     }
+
+    public function active(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'active',
+        ]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'inactive',
+        ]);
+    }
+
+    public function maintenance(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'maintenance',
+        ]);
+    }
 }
