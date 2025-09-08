@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Server } from 'lucide-vue-next';
+import { Folder, LayoutGrid, Server } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -27,7 +27,7 @@ const footerNavItems: NavItem[] = [
         title: 'Github Repo',
         href: 'https://github.com/mahfuz-rahman007/cloud-server-management',
         icon: Folder,
-    }
+    },
 ];
 </script>
 

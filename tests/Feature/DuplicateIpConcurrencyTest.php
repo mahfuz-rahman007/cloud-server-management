@@ -17,7 +17,7 @@ it('handles duplicate IP race condition on server creation', function () {
 
     // Simulate race condition: validation passes but another user creates server with same IP
     // We'll directly trigger the database constraint violation
-    
+
     // Try to create another server with the same IP
     $response = $this->post('/servers', [
         'name' => 'new-server',
@@ -97,7 +97,7 @@ it('handles concurrent server creation via API with duplicate IP', function () {
     // Should return 422 validation error
     $response->assertStatus(422);
     $response->assertJsonValidationErrors(['ip_address']);
-    
+
     // Verify the error message in JSON response
     $responseData = $response->json();
     expect($responseData['errors']['ip_address'][0])
@@ -155,7 +155,7 @@ it('handles race condition between validation and database insert', function () 
 
     // Mock the scenario where validation might have passed but DB constraint fails
     // This would happen if another request created the server between validation and insert
-    
+
     $response = $this->post('/servers', [
         'name' => 'race-condition-test',
         'ip_address' => '172.16.0.1',
@@ -169,7 +169,7 @@ it('handles race condition between validation and database insert', function () 
     // Should handle the constraint violation gracefully
     $response->assertRedirect();
     $response->assertSessionHasErrors(['ip_address']);
-    
+
     // Should preserve user input
     $response->assertSessionHasInput('name', 'race-condition-test');
     $response->assertSessionHasInput('provider', 'vultr');
@@ -186,12 +186,12 @@ it('specifically tests database constraint exception handling', function () {
 
     // The normal validation would catch this, but this tests the exception handling
     // that would occur if there was a race condition
-    
+
     $response = $this->post('/servers', [
         'name' => 'constraint-test',
         'ip_address' => '10.10.10.10', // Same IP as existing
         'provider' => 'aws',
-        'status' => 'active', 
+        'status' => 'active',
         'cpu_cores' => 2,
         'ram_mb' => 2048,
         'storage_gb' => 25,
@@ -201,11 +201,11 @@ it('specifically tests database constraint exception handling', function () {
     // the database constraint would be the last line of defense
     $response->assertRedirect();
     $response->assertSessionHasErrors(['ip_address']);
-    
+
     // Verify helpful error message (either from validation or constraint handling)
     $errors = session('errors')->getBag('default');
     $errorMessage = $errors->first('ip_address');
-    
+
     // Should be either the validation message or the race condition message
     expect($errorMessage)->toContain('IP address');
     expect($errorMessage)->toContain('already');

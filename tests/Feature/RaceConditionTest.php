@@ -2,7 +2,6 @@
 
 use App\Models\Server;
 use App\Models\User;
-use Carbon\Carbon;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -136,7 +135,7 @@ it('handles concurrent updates with different timestamps', function () {
     // Verify both servers were updated correctly
     $this->server->refresh();
     $server2->refresh();
-    
+
     expect($this->server->name)->toBe('first-update');
     expect($server2->name)->toBe('second-update');
 });
@@ -167,7 +166,7 @@ it('works with json api requests', function () {
     // Should return validation error in JSON format
     $response->assertStatus(422);
     $response->assertJsonValidationErrors(['updated_at']);
-    
+
     $responseData = $response->json();
     expect($responseData['errors']['updated_at'][0])
         ->toBe('This server was modified by another user. Please refresh and try again.');

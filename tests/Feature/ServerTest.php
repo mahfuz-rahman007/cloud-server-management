@@ -67,7 +67,7 @@ it('accepts valid index request parameters', function () {
     $this->actingAs($this->user);
 
     $response = $this->get('/servers?status=active&provider=aws&search=web&sort=name&direction=asc&per_page=50&page=1');
-    
+
     $response->assertSuccessful();
     $response->assertInertia(fn ($page) => $page
         ->component('Servers/Index')
@@ -87,7 +87,7 @@ it('handles empty search gracefully', function () {
 it('handles special characters in search', function () {
     $this->actingAs($this->user);
 
-    $response = $this->get('/servers?search=' . urlencode('web-server@test.com'));
+    $response = $this->get('/servers?search='.urlencode('web-server@test.com'));
     $response->assertSuccessful();
 });
 
