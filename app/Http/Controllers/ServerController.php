@@ -39,12 +39,12 @@ class ServerController extends Controller
     private function buildServerQuery(array $filters)
     {
         return Server::query()
-            ->when($filters['status'] ?? null, fn($q, $status) => $q->where('status', $status))
-            ->when($filters['provider'] ?? null, fn($q, $provider) => $q->where('provider', $provider))
+            ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
+            ->when($filters['provider'] ?? null, fn ($q, $provider) => $q->where('provider', $provider))
             ->when($filters['search'] ?? null, function ($q, $search) {
                 $q->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
-                          ->orWhere('ip_address', 'like', "%{$search}%");
+                        ->orWhere('ip_address', 'like', "%{$search}%");
                 });
             })
             ->orderBy($filters['sort'] ?? 'created_at', $filters['direction'] ?? 'desc');
@@ -80,7 +80,7 @@ class ServerController extends Controller
     {
         try {
             Server::create($request->validated());
-            
+
             return redirect()->route('servers.index')->with('success', 'Server created successfully.');
         } catch (UniqueConstraintViolationException $e) {
             return $this->handleConstraintViolation($e);
@@ -109,10 +109,10 @@ class ServerController extends Controller
     {
         $data = $request->validated();
         unset($data['updated_at']); // Laravel auto-updates this
-        
+
         try {
             $server->update($data);
-            
+
             return redirect()->back()->with('success', 'Server updated successfully.');
         } catch (UniqueConstraintViolationException $e) {
             return $this->handleConstraintViolation($e);
@@ -138,7 +138,7 @@ class ServerController extends Controller
         ]);
 
         $deletedCount = Server::whereIn('id', $validated['ids'])->delete();
-        
+
         return redirect()->route('servers.index')
             ->with('success', "{$deletedCount} servers deleted successfully.");
     }
@@ -156,7 +156,7 @@ class ServerController extends Controller
 
         $updatedCount = Server::whereIn('id', $validated['ids'])
             ->update(['status' => $validated['status']]);
-            
+
         return redirect()->route('servers.index')
             ->with('success', "{$updatedCount} servers updated successfully.");
     }
@@ -167,7 +167,7 @@ class ServerController extends Controller
      */
     private function handleConstraintViolation(UniqueConstraintViolationException $e): RedirectResponse
     {
-        if (!str_contains($e->getMessage(), 'ip_address')) {
+        if (! str_contains($e->getMessage(), 'ip_address')) {
             throw $e;
         }
 

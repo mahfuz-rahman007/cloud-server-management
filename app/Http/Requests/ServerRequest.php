@@ -78,16 +78,16 @@ class ServerRequest extends FormRequest
         $serverId = $this->getServerId();
         $name = $this->input('name');
         $provider = $this->input('provider');
-        
+
         $query = DB::table('servers')
             ->select('id')
             ->where('name', $name)
             ->where('provider', $provider);
-            
+
         if ($serverId) {
             $query->where('id', '!=', $serverId);
         }
-        
+
         if ($query->exists()) {
             $validator->errors()->add('name', 'The name has already been taken for this provider.');
         }
@@ -98,27 +98,27 @@ class ServerRequest extends FormRequest
      */
     private function validateVersionConflicts($validator): void
     {
-        if (!$this->isUpdate() || !$this->has('updated_at')) {
+        if (! $this->isUpdate() || ! $this->has('updated_at')) {
             return;
         }
 
         $serverId = $this->getServerId();
         $submittedTime = $this->input('updated_at');
-        
+
         $currentUpdatedAt = DB::table('servers')
             ->where('id', $serverId)
             ->value('updated_at');
-            
-        if (!$currentUpdatedAt) {
+
+        if (! $currentUpdatedAt) {
             return; // Server doesn't exist
         }
 
         $submittedTime = Carbon::parse($submittedTime);
         $currentTime = Carbon::parse($currentUpdatedAt);
-        
-        if (!$submittedTime->equalTo($currentTime)) {
+
+        if (! $submittedTime->equalTo($currentTime)) {
             $validator->errors()->add(
-                'updated_at', 
+                'updated_at',
                 'This server was modified by another user when you submitted your changes. Please try again.'
             );
         }

@@ -9,56 +9,48 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class ServerFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
+        static $counter = 0;
+        $counter++;
+
+        // Pre-defined arrays for efficient rotation (no random calls)
+        $prefixes = ['web', 'api', 'db', 'cache', 'worker', 'queue', 'mail', 'file', 'backup', 'monitor'];
+        $environments = ['prod', 'staging', 'dev', 'test'];
+        $regions = ['us', 'eu', 'asia'];
         $providers = ['aws', 'digitalocean', 'vultr', 'other'];
         $statuses = ['active', 'inactive', 'maintenance'];
-        
-        $provider = fake()->randomElement($providers);
-        
+        $cpuOptions = [1, 2, 4, 8, 16, 32];
+        $ramOptions = [512, 1024, 2048, 4096, 8192, 16384];
+        $storageOptions = [20, 50, 100, 250, 500, 1000];
+
+        // Generate realistic server names with counter
+        $serverName = $prefixes[$counter % count($prefixes)].'-'.
+                     $environments[$counter % count($environments)].'-'.
+                     $regions[$counter % count($regions)].'-'.
+                     str_pad($counter, 3, '0', STR_PAD_LEFT);
+
+        // Sequential IP generation (much faster than unique() checking)
+        $ipSegment3 = floor(($counter - 1) / 254);
+        $ipSegment4 = (($counter - 1) % 254) + 1;
+        $ipAddress = "10.0.{$ipSegment3}.{$ipSegment4}";
+
+        // Incremental timestamps for realistic spread
+        $baseTime = now()->subMonths(6);
+        $minutesToAdd = ($counter * 5) + fake()->numberBetween(0, 240); // 5 min intervals + random
+        $createdAt = $baseTime->copy()->addMinutes($minutesToAdd);
+        $updatedAt = $createdAt->copy()->addMinutes(fake()->numberBetween(0, 60));
+
         return [
-            'name' => fake()->unique()->userName() . '-' . fake()->randomElement(['web', 'db', 'cache', 'api', 'worker']) . '-' . fake()->numberBetween(1, 9999),
-            'ip_address' => fake()->unique()->ipv4(),
-            'provider' => $provider,
-            'status' => fake()->randomElement($statuses),
-            'cpu_cores' => fake()->numberBetween(1, 128),
-            'ram_mb' => fake()->randomElement([512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]),
-            'storage_gb' => fake()->randomElement([10, 20, 50, 100, 250, 500, 1000, 2000]),
+            'name' => $serverName,
+            'ip_address' => $ipAddress,
+            'provider' => $providers[$counter % count($providers)],
+            'status' => $statuses[$counter % count($statuses)],
+            'cpu_cores' => $cpuOptions[$counter % count($cpuOptions)],
+            'ram_mb' => $ramOptions[$counter % count($ramOptions)],
+            'storage_gb' => $storageOptions[$counter % count($storageOptions)],
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
         ];
-    }
-
-    /**
-     * Create a server with active status.
-     */
-    public function active(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => 'active',
-        ]);
-    }
-
-    /**
-     * Create a server with inactive status.
-     */
-    public function inactive(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => 'inactive',
-        ]);
-    }
-
-    /**
-     * Create a server with maintenance status.
-     */
-    public function maintenance(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => 'maintenance',
-        ]);
     }
 }
