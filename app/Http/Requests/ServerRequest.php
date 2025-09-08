@@ -2,27 +2,22 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Server;
+use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ServerRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
-        $serverId = $this->route('server')?->id;
+        $serverId = $this->getServerId();
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -36,31 +31,22 @@ class ServerRequest extends FormRequest
             'cpu_cores' => ['required', 'integer', 'between:1,128'],
             'ram_mb' => ['required', 'integer', 'between:512,1048576'],
             'storage_gb' => ['required', 'integer', 'between:10,1048576'],
+            'updated_at' => $this->isUpdate() ? ['required', 'date'] : ['sometimes', 'date'],
         ];
     }
 
     /**
-     * Get the validation rules for name uniqueness per provider.
+     * Check for name uniqueness per provider
+     * Check for version conflicts
      */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            $serverId = $this->route('server')?->id;
-
-            $exists = \App\Models\Server::where('name', $this->input('name'))
-                ->where('provider', $this->input('provider'))
-                ->when($serverId, fn ($query) => $query->where('id', '!=', $serverId))
-                ->exists();
-
-            if ($exists) {
-                $validator->errors()->add('name', 'The name has already been taken for this provider.');
-            }
+            $this->validateNameUniquenessPerProvider($validator);
+            $this->validateVersionConflicts($validator);
         });
     }
 
-    /**
-     * Get custom error messages for validation rules.
-     */
     public function messages(): array
     {
         return [
@@ -75,5 +61,66 @@ class ServerRequest extends FormRequest
             'status.required' => 'Please select a server status.',
             'status.in' => 'Please select a valid status (Active, Inactive, or Maintenance).',
         ];
+    }
+
+    private function getServerId(): ?int
+    {
+        return $this->route('server')?->id;
+    }
+
+    private function isUpdate(): bool
+    {
+        return $this->getServerId() !== null;
+    }
+
+    private function validateNameUniquenessPerProvider($validator): void
+    {
+        $serverId = $this->getServerId();
+        $name = $this->input('name');
+        $provider = $this->input('provider');
+        
+        $query = DB::table('servers')
+            ->select('id')
+            ->where('name', $name)
+            ->where('provider', $provider);
+            
+        if ($serverId) {
+            $query->where('id', '!=', $serverId);
+        }
+        
+        if ($query->exists()) {
+            $validator->errors()->add('name', 'The name has already been taken for this provider.');
+        }
+    }
+
+    /**
+     * Check for version conflicts when updating a server by more user
+     */
+    private function validateVersionConflicts($validator): void
+    {
+        if (!$this->isUpdate() || !$this->has('updated_at')) {
+            return;
+        }
+
+        $serverId = $this->getServerId();
+        $submittedTime = $this->input('updated_at');
+        
+        $currentUpdatedAt = DB::table('servers')
+            ->where('id', $serverId)
+            ->value('updated_at');
+            
+        if (!$currentUpdatedAt) {
+            return; // Server doesn't exist
+        }
+
+        $submittedTime = Carbon::parse($submittedTime);
+        $currentTime = Carbon::parse($currentUpdatedAt);
+        
+        if (!$submittedTime->equalTo($currentTime)) {
+            $validator->errors()->add(
+                'updated_at', 
+                'This server was modified by another user when you submitted your changes. Please try again.'
+            );
+        }
     }
 }

@@ -245,6 +245,7 @@ it('can update server', function () {
         'cpu_cores' => 8,
         'ram_mb' => 16384,
         'storage_gb' => 500,
+        'updated_at' => $server->updated_at->format('Y-m-d H:i:s'), // Include version control
     ];
 
     $response = $this->put("/servers/{$server->id}", $updateData);

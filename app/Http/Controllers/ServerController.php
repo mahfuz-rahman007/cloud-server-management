@@ -5,17 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ServerRequest;
 use App\Http\Resources\ServerResource;
 use App\Models\Server;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ServerController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
-        $request->validate([
+        $validated = $request->validate([
             'status' => ['sometimes', 'string', 'in:active,inactive,maintenance'],
             'provider' => ['sometimes', 'string', 'in:aws,digitalocean,vultr,other'],
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -25,85 +25,76 @@ class ServerController extends Controller
             'page' => ['sometimes', 'integer', 'min:1'],
         ]);
 
-        $query = Server::query();
+        $servers = $this->buildServerQuery($validated)
+            ->paginate($validated['per_page'] ?? 25)
+            ->appends($request->query());
 
-        $query->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
-              ->when($request->filled('provider'), fn($q) => $q->where('provider', $request->provider))
-              ->when($request->filled('search'), function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('ip_address', 'like', '%' . $request->search . '%');
-              });
+        return $this->renderIndexPage($servers, $validated);
+    }
 
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-        $query->orderBy($sortField, $sortDirection);
+    /**
+     * Build optimized server query with filters, search, and sorting
+     * Uses proper WHERE clause grouping for search to avoid incorrect results
+     */
+    private function buildServerQuery(array $filters)
+    {
+        return Server::query()
+            ->when($filters['status'] ?? null, fn($q, $status) => $q->where('status', $status))
+            ->when($filters['provider'] ?? null, fn($q, $provider) => $q->where('provider', $provider))
+            ->when($filters['search'] ?? null, function ($q, $search) {
+                $q->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                          ->orWhere('ip_address', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy($filters['sort'] ?? 'created_at', $filters['direction'] ?? 'desc');
+    }
 
-        $perPage = $request->get('per_page', 25);
-        $servers = $query->paginate($perPage)->appends($request->query());
+    /**
+     * Render optimized index page using direct array conversion for performance
+     */
+    private function renderIndexPage($servers, array $filters): Response
+    {
+        $paginationData = $servers->toArray();
 
-        // Return JSON response for API requests
-        if ($request->wantsJson()) {
-            return ServerResource::collection($servers);
-        }
-
-        $serversToArray = $servers->toArray();
-
-        // Return Inertia response for web requests
         return Inertia::render('Servers/Index', [
             'servers' => [
-                'data' => $serversToArray['data'],
+                'data' => $paginationData['data'],
             ],
-            'filters' => $request->only(['status', 'provider', 'search', 'sort', 'direction', 'per_page']),
+            'filters' => array_intersect_key($filters, array_flip(['status', 'provider', 'search', 'sort', 'direction', 'per_page'])),
             'pagination' => [
-                'current_page' => $serversToArray['current_page'],
-                'last_page' => $serversToArray['last_page'],
-                'per_page' => $serversToArray['per_page'],
-                'total' => $serversToArray['total'],
+                'current_page' => $paginationData['current_page'],
+                'last_page' => $paginationData['last_page'],
+                'per_page' => $paginationData['per_page'],
+                'total' => $paginationData['total'],
             ],
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): Response
     {
         return Inertia::render('Servers/Create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(ServerRequest $request)
+    public function store(ServerRequest $request): RedirectResponse
     {
-        $server = Server::create($request->validated());
-
-        if ($request->wantsJson()) {
-            return new ServerResource($server);
+        try {
+            Server::create($request->validated());
+            
+            return redirect()->route('servers.index')->with('success', 'Server created successfully.');
+        } catch (UniqueConstraintViolationException $e) {
+            return $this->handleConstraintViolation($e);
         }
-
-        return redirect()->route('servers.index')
-            ->with('success', 'Server created successfully.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Server $server)
+    public function show(Server $server): Response
     {
-        if (request()->wantsJson()) {
-            return new ServerResource($server);
-        }
-
         return Inertia::render('Servers/Show', [
             'server' => (new ServerResource($server))->resolve(),
         ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Server $server)
+    public function edit(Server $server): Response
     {
         return Inertia::render('Servers/Edit', [
             'server' => (new ServerResource($server))->resolve(),
@@ -111,74 +102,79 @@ class ServerController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update server with race condition protection via timestamp validation
+     * Handles IP address constraint violations gracefully
      */
-    public function update(ServerRequest $request, Server $server)
+    public function update(ServerRequest $request, Server $server): RedirectResponse
     {
-        $server->update($request->validated());
-
-        if ($request->wantsJson()) {
-            return new ServerResource($server);
+        $data = $request->validated();
+        unset($data['updated_at']); // Laravel auto-updates this
+        
+        try {
+            $server->update($data);
+            
+            return redirect()->back()->with('success', 'Server updated successfully.');
+        } catch (UniqueConstraintViolationException $e) {
+            return $this->handleConstraintViolation($e);
         }
-
-        return redirect()->route('servers.index')
-            ->with('success', 'Server updated successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Server $server)
+    public function destroy(Server $server): RedirectResponse
     {
         $server->delete();
-
-        if (request()->wantsJson()) {
-            return response()->json(['message' => 'Server deleted successfully.']);
-        }
 
         return redirect()->route('servers.index')
             ->with('success', 'Server deleted successfully.');
     }
 
     /**
-     * Bulk delete servers.
+     * Bulk delete servers
      */
-    public function bulkDestroy(Request $request)
+    public function bulkDestroy(Request $request): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'ids' => ['required', 'array'],
-            'ids.*' => ['integer', 'exists:servers,id'],
+            'ids.*' => ['integer'],
         ]);
 
-        $deletedCount = Server::whereIn('id', $request->ids)->delete();
-
-        if ($request->wantsJson()) {
-            return response()->json(['message' => "{$deletedCount} servers deleted successfully."]);
-        }
-
+        $deletedCount = Server::whereIn('id', $validated['ids'])->delete();
+        
         return redirect()->route('servers.index')
             ->with('success', "{$deletedCount} servers deleted successfully.");
     }
 
     /**
-     * Bulk update server status.
+     * Bulk update server status
      */
-    public function bulkUpdateStatus(Request $request)
+    public function bulkUpdateStatus(Request $request): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'ids' => ['required', 'array'],
-            'ids.*' => ['integer', 'exists:servers,id'],
+            'ids.*' => ['integer'],
             'status' => ['required', 'in:active,inactive,maintenance'],
         ]);
 
-        $updatedCount = Server::whereIn('id', $request->ids)
-            ->update(['status' => $request->status]);
-
-        if ($request->wantsJson()) {
-            return response()->json(['message' => "{$updatedCount} servers updated successfully."]);
-        }
-
+        $updatedCount = Server::whereIn('id', $validated['ids'])
+            ->update(['status' => $validated['status']]);
+            
         return redirect()->route('servers.index')
             ->with('success', "{$updatedCount} servers updated successfully.");
+    }
+
+    /**
+     * Handle database constraint violations (race conditions for IP duplicates)
+     * Converts technical database errors to user-friendly messages
+     */
+    private function handleConstraintViolation(UniqueConstraintViolationException $e): RedirectResponse
+    {
+        if (!str_contains($e->getMessage(), 'ip_address')) {
+            throw $e;
+        }
+
+        $errorMessage = 'This IP address was just taken by another user. Please choose a different IP address.';
+
+        return redirect()->back()
+            ->withErrors(['ip_address' => $errorMessage])
+            ->withInput();
     }
 }
