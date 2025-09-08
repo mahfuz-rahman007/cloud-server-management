@@ -5,7 +5,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome');
+    if (auth()->check()) {
+        return redirect('/servers');
+    }
+    return redirect('/login');
 })->middleware('throttle:web')->name('home');
 
 Route::get('dashboard', function () {

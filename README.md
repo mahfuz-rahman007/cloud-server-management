@@ -132,19 +132,185 @@ Content-Type: application/json
 }
 ```
 
+**Success Response (201):**
+```json
+{
+  "data": {
+    "id": 42,
+    "name": "api-server-01",
+    "ip_address": "10.0.0.150",
+    "provider": "digitalocean",
+    "status": "active",
+    "cpu_cores": 8,
+    "ram_mb": 16384,
+    "storage_gb": 500,
+    "created_at": "2025-09-08 16:30:15",
+    "updated_at": "2025-09-08 16:30:15"
+  }
+}
+```
+
+**Validation Error (422):**
+```json
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "ip_address": ["This IP address is already assigned to another server."],
+    "cpu_cores": ["CPU cores must be between 1 and 128."]
+  }
+}
+```
+
+#### **Get Single Server**
+```http
+GET /servers/{id}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "web-server-01",
+    "ip_address": "192.168.1.100",
+    "provider": "aws",
+    "status": "active",
+    "cpu_cores": 4,
+    "ram_mb": 8192,
+    "storage_gb": 100,
+    "created_at": "2025-09-07 16:28:01",
+    "updated_at": "2025-09-07 16:28:01"
+  }
+}
+```
+
+#### **Update Server**
+```http
+PUT /servers/{id}
+Content-Type: application/json
+
+{
+  "name": "web-server-updated",
+  "ip_address": "192.168.1.100", 
+  "provider": "aws",
+  "status": "maintenance",
+  "cpu_cores": 8,
+  "ram_mb": 16384,
+  "storage_gb": 200,
+  "updated_at": "2025-09-07 16:28:01"
+}
+```
+
+**Note:** `updated_at` field is required for race condition protection. Use the timestamp from when you fetched the server data.
+
+**Success Response:**
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "web-server-updated",
+    "ip_address": "192.168.1.100",
+    "provider": "aws", 
+    "status": "maintenance",
+    "cpu_cores": 8,
+    "ram_mb": 16384,
+    "storage_gb": 200,
+    "created_at": "2025-09-07 16:28:01",
+    "updated_at": "2025-09-08 16:35:22"
+  }
+}
+```
+
+**Race Condition Error (422):**
+```json
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "updated_at": ["This server was modified by another user. Please refresh and try again."]
+  }
+}
+```
+
+#### **Delete Server**
+```http
+DELETE /servers/{id}
+```
+
+**Response:**
+```json
+{
+  "message": "Server deleted successfully."
+}
+```
+
 #### **Bulk Operations**
+
+**Bulk Delete Servers:**
 ```http
 DELETE /servers/bulk-destroy
-{
-  "ids": [1, 2, 3]
-}
+Content-Type: application/json
 
-PATCH /servers/bulk-update-status  
+{
+  "ids": [1, 2, 3, 4, 5]
+}
+```
+
+**Response:**
+```json
+{
+  "message": "5 servers deleted successfully."
+}
+```
+
+**Bulk Update Server Status:**
+```http
+PATCH /servers/bulk-update-status
+Content-Type: application/json
+
 {
   "ids": [1, 2, 3],
   "status": "maintenance"
 }
 ```
+
+**Response:**
+```json
+{
+  "message": "3 servers updated successfully."
+}
+```
+
+### **Validation Rules**
+
+All server fields have comprehensive validation:
+
+- **name**: Required, string, max 255 characters, unique per provider
+- **ip_address**: Required, valid IPv4, globally unique
+- **provider**: Required, one of: `aws`, `digitalocean`, `vultr`, `other`
+- **status**: Required, one of: `active`, `inactive`, `maintenance`
+- **cpu_cores**: Required, integer between 1-128
+- **ram_mb**: Required, integer between 512-1,048,576 (1TB)
+- **storage_gb**: Required, integer between 10-1,048,576 (1PB)
+
+### **Error Handling**
+
+The API returns consistent error responses with helpful messages:
+
+**Format:**
+```json
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "field_name": ["Specific error message"]
+  }
+}
+```
+
+**Common Error Scenarios:**
+- **Duplicate IP**: "This IP address is already assigned to another server."
+- **Invalid IPv4**: "Please enter a valid IPv4 address (e.g., 192.168.1.100)"
+- **Race Condition**: "This server was modified by another user. Please try again."
+- **Concurrency Edge Case**: "This IP address was just taken by another user. Please choose a different IP address."
 
 ### **Rate Limiting**
 API endpoints are protected with layered rate limiting:
@@ -414,20 +580,6 @@ I decided to implement defense in depth rather than just fixing the error messag
 - Catch constraint violations and convert to user messages
 - Preserve form input for easy correction
 
-#### **Phase 3: Performance Optimization Discovery**  
-While implementing, I identified a major performance bottleneck in bulk operations:
-
-**Problem Found**: `exists:servers,id` validation was causing N+1 queries
-**My Analysis**: Each bulk operation validated every ID individually  
-**My Solution**: Remove unnecessary validation - `whereIn()` naturally handles invalid IDs
-
-### **🏆 Performance Results**
-
-| Operation | Before Optimization | After Optimization | Improvement |
-|-----------|-------------------|-------------------|-------------|
-| **Bulk Validation** | 2,253ms | 79ms | **96.5% faster** |
-| **Error Handling** | Technical DB errors | User-friendly messages | UX improvement |
-| **Data Safety** | Single validation layer | Triple-layer protection | Enhanced reliability |
 
 ### **🛡️ Triple-Layer Protection**
 ```php
@@ -444,15 +596,6 @@ catch (UniqueConstraintViolationException $e) {
     ]);
 }
 ```
-
-### **💡 Key Decision: Removing Performance Bottleneck**
-**AI Suggestion**: Keep `exists` validation for safety  
-**My Decision**: Remove it - `whereIn()` is inherently safe  
-**Reasoning**: 
-- Database operations are atomic 
-- Non-existent IDs are simply ignored
-- Massive performance gain (96.5% improvement)
-- No security or data integrity impact
 
 **Test Coverage**: 6 comprehensive tests covering race conditions, constraint violations, and performance scenarios
 
