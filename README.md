@@ -43,11 +43,13 @@ cp .env.example .env
 php artisan key:generate
 
 # Database setup
-mysql -u root -p -e "CREATE DATABASE cloud_server_management;"
-mysql -u root -p -e "CREATE DATABASE cloud_server_management_test;"
+# Need to create two database
+# cloud_server_management (for main application)
+# cloud_server_management_test (for test application)
 
 # Configure .env file with your database credentials
 # DB_DATABASE=cloud_server_management
+# DB_HOST,DB_USERNAME,DB_PASSWORD
 # Database cloud_server_management_test will be used in testing(If you want to run test)
 
 # Run migrations and seed data
@@ -64,6 +66,16 @@ php artisan serve
 ```
 
 **Access**: http://localhost:8000
+
+---
+
+## 📈 **Tech Stack**
+
+- **Backend**: Laravel 12.28.1, PHP 8.4.12, MySQL 8.0
+- **Frontend**: Vue 3.5.18, Inertia.js v2, TypeScript, Tailwind CSS v4
+- **Testing**: Pest v4 (backend) + Vitest (frontend) with performance benchmarking
+- **Development Tools**: Laravel Pint (code formatting), Laravel Sail (Docker)
+- **AI Collaboration**: Claude Code with Laravel Boost MCP for optimized development
 
 ---
 
@@ -463,14 +475,6 @@ $duration = (microtime(true) - $start) * 1000;
 #### **Phase 3: My Breakthrough**
 **Key Insight**: Bottleneck was in PHP application layer, query writing, not database
 
-**Optimization Applied:**
-```php
-// BEFORE (slow): Laravel Resource transformation
-'data' => ServerResource::collection($servers)->resolve(),
-
-// AFTER (fast): Direct array conversion
-'data' => $servers->toArray()['data'],
-```
 
 **Additional improvements:**
 - Streamlined query building with `when()` methods
@@ -483,11 +487,6 @@ $duration = (microtime(true) - $start) * 1000;
 | **Dataset Size** | 5,000 servers | 10,000 servers | 2x larger |
 | **Response Time** | <100ms | **40.9ms** | **400% better** |
 | **Performance Gain** | - | **79% faster** | vs initial attempts |
-
-### **💡 Key Learning**
-**AI provided systematic testing and traditional optimization**  
-**I identified the actual bottleneck and applied targeted solution**  
-**Result**: Exceptional performance improvement through effective collaboration
 
 ---
 
@@ -545,9 +544,6 @@ if (!$submittedTime->equalTo($currentTime)) {
 
 **Test Coverage:** 4 comprehensive tests with 30+ assertions
 
-### **💡 Key Learning**
-Using existing `updated_at` timestamps provides effective version control without adding database columns. The solution prevents data loss while maintaining good user experience through clear messaging and easy recovery options.
-
 ---
 
 ## 🔍 **Debugging Journey - Validation Edge Case Challenge**
@@ -601,7 +597,7 @@ catch (UniqueConstraintViolationException $e) {
 
 ---
 
-## ⚙️ **Technical Decisions & Trade-offs**
+## ⚙️ **Technical Decisions **
 
 ### **Backend Architecture**
 - **Laravel 12**: Modern framework features vs. older version stability
@@ -683,16 +679,6 @@ export default defineConfig({
 ```
 
 **Combined Test Coverage**: **85+ tests** ensuring comprehensive quality assurance across the full stack.
-
----
-
-## 📈 **Tech Stack**
-
-- **Backend**: Laravel 12.28.1, PHP 8.4.12, MySQL 8.0
-- **Frontend**: Vue 3.5.18, Inertia.js v2, TypeScript, Tailwind CSS v4
-- **Testing**: Pest v4 (backend) + Vitest (frontend) with performance benchmarking
-- **Development Tools**: Laravel Pint (code formatting), Laravel Sail (Docker)
-- **AI Collaboration**: Claude Code with Laravel Boost MCP for optimized development
 
 ---
 
