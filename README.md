@@ -77,7 +77,7 @@ npm run dev
 - **Backend**: Laravel 12.28.1, PHP 8.4.12, MySQL 8.0
 - **Frontend**: Vue 3.5.18, Inertia.js v2, TypeScript, Tailwind CSS v4
 - **Testing**: Pest v4 (backend) + Vitest (frontend) with performance benchmarking
-- **Development Tools**: Laravel Pint (code formatting), Laravel Sail (Docker)
+- **Development Tools**: Laravel Pint (code formatting)
 - **AI Collaboration**: Claude Code with Laravel Boost MCP for optimized development
 
 ---
@@ -670,15 +670,6 @@ npm test Edit.test.ts     # Update forms with version control
 **Backend**: `phpunit.xml` with separate test database  
 **Frontend**: `vitest.config.ts` with Vue component testing setup
 
-```javascript
-// vitest.config.ts highlights
-export default defineConfig({
-  test: {
-    environment: 'happy-dom',
-    globals: true,
-  },
-  plugins: [vue()],
-})
 ```
 
 **Combined Test Coverage**: **85+ tests** ensuring comprehensive quality assurance across the full stack.
