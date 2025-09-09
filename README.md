@@ -58,11 +58,14 @@ php artisan db:seed
 
 # DB Seed will Create a User(email:admin@gmail.com, password:password) and 10,000 Server Records
 
-# Start Frontend
-npm run dev
+# Build Frontend
+npm run build
 
-# In separate terminal Start laravel servers
+# Start laravel server
 php artisan serve
+
+# Start frontend server in development
+npm run dev
 ```
 
 **Access**: http://localhost:8000
